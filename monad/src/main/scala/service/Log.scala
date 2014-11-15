@@ -1,4 +1,4 @@
-package log
+package service
 
 import scalaz.{Free, ~>, Id, Functor}
 
@@ -43,7 +43,7 @@ object Println extends (Log ~> Id.Id) {
     }
 }
 
-object Example {
+object LogExample {
   val free =
     for {
       x <- Free.liftF(Log.debug("Step 1", 1))
