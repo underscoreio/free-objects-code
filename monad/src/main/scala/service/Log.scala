@@ -3,24 +3,24 @@ package service
 import scalaz.{Free, ~>, Id, Functor}
 
 sealed trait Log[A]
-final case class Debug[A](msg: String, value: A) extends Log[A]
-final case class Warn[A](msg: String, value: A) extends Log[A]
-final case class Error[A](msg: String, value: A) extends Log[A]
+final case class Debug[A](msg: String, next: A) extends Log[A]
+final case class Warn[A](msg: String, next: A) extends Log[A]
+final case class Error[A](msg: String, next: A) extends Log[A]
 
 object Log {
   implicit val logFunctor: Functor[Log] = new Functor[Log] {
     def map[A, B](fa: Log[A])(f: A => B): Log[B] =
       fa match {
-        case Debug(msg, value) => Debug(msg, f(value))
-        case Warn(msg, value) => Warn(msg, f(value))
-        case Error(msg, value) => Error(msg, f(value))
+        case Debug(msg, next) => Debug(msg, f(next))
+        case Warn(msg, next) => Warn(msg, f(next))
+        case Error(msg, next) => Error(msg, f(next))
       }
   }
 
   // Smart constructors
-  def debug[A](msg: String, value: A): Log[A] = Debug(msg, value)
-  def warn[A](msg: String, value: A): Log[A] = Warn(msg, value)
-  def error[A](msg: String, value: A): Log[A] = Error(msg, value)
+  def debug(msg: String): Log[Unit] = Debug(msg, ())
+  def warn(msg: String): Log[Unit] = Warn(msg, ())
+  def error(msg: String): Log[Unit] = Error(msg, ())
 }
 
 object Println extends (Log ~> Id.Id) {
@@ -29,26 +29,29 @@ object Println extends (Log ~> Id.Id) {
 
   def apply[A](in: Log[A]): Id[A] =
     in match {
-      case Debug(msg, value) =>
+      case Debug(msg, next) =>
         println(s"DEBUG: $msg")
-        value.point[Id]
+        next.point[Id]
 
-      case Warn(msg, value) =>
+      case Warn(msg, next) =>
         println(s"WARN: $msg")
-        value.point[Id]
+        next.point[Id]
 
-      case Error(msg, value) =>
+      case Error(msg, next) =>
         println(s"ERROR: $msg")
-        value.point[Id]
+        next.point[Id]
     }
 }
 
 object LogExample {
   val free =
     for {
-      x <- Free.liftF(Log.debug("Step 1", 1))
-      y <- Free.liftF(Log.warn("Step 2", 2))
-      z <- Free.liftF(Log.error("Step 3", 3))
+      _ <- Free.liftF(Log.debug("Step 1"))
+      x = 1
+      _ <- Free.liftF(Log.warn("Step 2"))
+      y = 2
+      _ <- Free.liftF(Log.error("Step 3"))
+      z = 3
     } yield x + y + z
 
   val result =
