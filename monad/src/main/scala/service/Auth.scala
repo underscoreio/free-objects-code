@@ -1,6 +1,7 @@
 package service
 
-import scalaz.{Free, ~>, Id, Functor}
+import scala.language.higherKinds
+import scalaz.{Free, ~>, Id, Functor, Inject}
 
 final case class Credentials(email: String, password: String)
 
@@ -19,9 +20,12 @@ object Auth {
       }
   }
 
-  def getCredentials: Auth[Credentials] = GetCredentials(identity)
-  def login(credentials: Credentials): Auth[Option[User]] = Login(credentials, identity)
-  def logout(credentials: Credentials): Auth[Boolean] = Logout(credentials, identity)
+  def getCredentials[F[_]: Functor](implicit I: Inject[Auth, F]): Free[F, Credentials] =
+    Inject.inject[F, Auth, Credentials](GetCredentials(Free.point(_)))
+  def login[F[_]: Functor](credentials: Credentials)(implicit I: Inject[Auth, F]): Free[F, Option[User]] =
+    Inject.inject[F, Auth, Option[User]](Login(credentials, Free.point(_)))
+  def logout[F[_]: Functor](credentials: Credentials)(implicit I: Inject[Auth, F]): Free[F, Boolean] =
+    Inject.inject[F, Auth, Boolean](Logout(credentials, Free.point(_)))
 }
 
 
@@ -46,13 +50,13 @@ object DummyAuth extends (Auth ~> Id.Id) {
     }
 }
 
-object Example {
+object AuthExample {
   import Auth._
 
   val free =
     for {
-      c <- Free.liftF(getCredentials)
-      u <- Free.liftF(login(c))
-      l <- Free.liftF(logout(c))
+      c <- getCredentials
+      u <- login(c)
+      l <- logout(c)
     } yield l
 }

@@ -1,6 +1,7 @@
 package service
 
-import scalaz.{Free, ~>, Id, Functor}
+import scala.language.higherKinds
+import scalaz.{Free, ~>, Id, Functor, Inject}
 
 sealed trait Log[A]
 final case class Debug[A](msg: String, next: A) extends Log[A]
@@ -18,9 +19,12 @@ object Log {
   }
 
   // Smart constructors
-  def debug(msg: String): Log[Unit] = Debug(msg, ())
-  def warn(msg: String): Log[Unit] = Warn(msg, ())
-  def error(msg: String): Log[Unit] = Error(msg, ())
+  def debug[F[_]: Functor](msg: String)(implicit I: Inject[Log, F]): Free[F, Unit] =
+    Inject.inject[F, Log, Unit](Debug(msg, Free.point(())))
+  def warn[F[_]: Functor](msg: String)(implicit I: Inject[Log, F]): Free[F, Unit] =
+    Inject.inject[F, Log, Unit](Warn(msg, Free.point(())))
+  def error[F[_]: Functor](msg: String)(implicit I: Inject[Log, F]): Free[F, Unit] =
+    Inject.inject[F, Log, Unit](Error(msg, Free.point(())))
 }
 
 object Println extends (Log ~> Id.Id) {
@@ -44,13 +48,15 @@ object Println extends (Log ~> Id.Id) {
 }
 
 object LogExample {
+  import Log._
+
   val free =
     for {
-      _ <- Free.liftF(Log.debug("Step 1"))
+      _ <- debug("Step 1")
       x = 1
-      _ <- Free.liftF(Log.warn("Step 2"))
+      _ <- warn("Step 2")
       y = 2
-      _ <- Free.liftF(Log.error("Step 3"))
+      _ <- error("Step 3")
       z = 3
     } yield x + y + z
 
