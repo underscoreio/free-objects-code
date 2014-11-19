@@ -26,9 +26,9 @@ object Combination {
     for {
       _    <- debug[T]("Getting credentials")
       c    <- getCredentials[T]
-      _    <- debug[T]("Attempting login")
-      optU <- login[T](c)
-      _    <- if(optU.isDefined) debug[T]("Logged in") else debug[T]("Could not login")
+      _    <- debug[T]("Attempting authenticate")
+      optU <- authenticate[T](c)
+      _    <- if(optU.isDefined) debug[T]("Logged in") else debug[T]("Could not authenticate")
     } yield c
 
   def result() = free foldMap(DummyAuth or Println)
