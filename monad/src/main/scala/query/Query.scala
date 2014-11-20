@@ -1,6 +1,6 @@
 package query
 
-import scalaz.Functor
+import scalaz.{~>, Id, Free, Functor}
 
 sealed trait Query[A]
 final case class ForEach[S,A](source: List[S], next: Ref[S] => A) extends Query[A]
@@ -29,4 +29,11 @@ object Query {
         case Select(expr, next) => Select(expr, next andThen f)//a => f(next(a)))
       }
   }
+
+  def forEach[S](source: List[S]) =
+    Free.liftF(ForEach(source, (ref: Ref[S]) => ref))
+  def filter(pred: Expr[Bool]) =
+    Free.liftF(Filter(pred, (bool: Bool) => bool) : Query[Bool])
+  def select[S](expr: Expr[S]) =
+    Free.liftF(Select(expr, (value: S) => value))
 }
